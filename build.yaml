@@ -1,19 +1,11 @@
-##
-## build.yaml
-## Home Assistant Add-on build metadata
-##
-## References:
-## https://developers.home-assistant.io/docs/add-ons/configuration/#add-on-extended-build
-##
-
 build_from:
   aarch64: "ghcr.io/home-assistant/aarch64-base:3.22"
-  amd64: "ghcr.io/home-assistant/amd64-base:3.22
-  
+  amd64: "ghcr.io/home-assistant/amd64-base:3.22"
+
 squash: false
 
 labels:
   org.opencontainers.image.title: "Alexa Matter Bridge"
-  org.opencontainers.image.description: "Local Alexa control via Matter — no cloud auth"
-  org.opencontainers.image.source: "https://github.com/ajnetworksa/ha-alexa-matter-bridge"
+  org.opencontainers.image.description: "Local Alexa control via Matter, no cloud authentication"
+  org.opencontainers.image.source: "https://github.com/ajnetworksa/alexa_bridge"
   org.opencontainers.image.licenses: "MIT"
