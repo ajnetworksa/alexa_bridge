@@ -1,0 +1,17 @@
+{
+  "name": "alexa-matter-bridge",
+  "version": "1.0.0",
+  "description": "Matterbridge + HA plugin wrapper for Alexa local Matter control",
+  "scripts": {
+    "start": "matterbridge -bridge -profile AlexaBridge"
+  },
+  "dependencies": {
+    "@matter/nodejs": "0.17.9",
+    "matterbridge": "^3.10.10",
+    "matterbridge-hass": "^1.5.0"
+  },
+  "engines": {
+    "node": ">=22.13.0 <23.0.0 || >=24.0.0 <25.0.0"
+  },
+  "license": "MIT"
+}
