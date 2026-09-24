@@ -23,6 +23,7 @@ COPY run.sh /run.sh
 COPY rootfs/ /
 
 RUN chmod +x /run.sh && \
+    chmod +x /usr/bin/patch-matterbridge.js && \
     chmod +x /usr/bin/setup-matterbridge.sh && \
     chmod +x /usr/bin/backup-commissioning.sh && \
     chmod +x /usr/bin/restore-commissioning.sh && \
