@@ -12,7 +12,7 @@ export HOME="/data"
 mkdir -p /data/.matterbridge /data/Matterbridge
 
 echo "========================================"
-echo "  Alexa Matter Bridge v1.0.5 Starting"
+echo "  Alexa Matter Bridge v1.0.6 Starting"
 echo "  Storage Path: /data/.matterbridge"
 echo "========================================"
 
@@ -106,6 +106,10 @@ cp -rf /app/node_modules/matterbridge-hass /data/Matterbridge/ 2>/dev/null || tr
 mkdir -p /usr/local/lib/node_modules
 rm -rf /usr/local/lib/node_modules/matterbridge-hass 2>/dev/null || true
 cp -rf /app/node_modules/matterbridge-hass /usr/local/lib/node_modules/ 2>/dev/null || true
+
+# ── Apply compatibility patches for Matterbridge 3.10 & matterbridge-hass ───
+echo "Applying compatibility patches..."
+node /usr/bin/patch-matterbridge.js 2>&1 || true
 
 echo "Registering matterbridge-hass plugin..."
 node /app/node_modules/.bin/matterbridge -add /data/Matterbridge/matterbridge-hass 2>&1 || \
