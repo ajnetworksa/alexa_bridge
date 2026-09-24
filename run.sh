@@ -6,8 +6,14 @@
 
 set -euo pipefail
 
+# ── Force persistent storage in /data volume ──────────────────
+# In Home Assistant, /data is the ONLY persistent directory across rebuilds
+export HOME="/data"
+mkdir -p /data/.matterbridge /data/Matterbridge
+
 echo "========================================"
-echo "  Alexa Matter Bridge v1.0.0 Starting"
+echo "  Alexa Matter Bridge v1.0.4 Starting"
+echo "  Storage Path: /data/.matterbridge"
 echo "========================================"
 
 # ── Read options from /data/options.json ──────────────────────
@@ -54,7 +60,7 @@ avahi-daemon --daemonize --no-chroot 2>/dev/null && \
 
 # ── Restore commissioning backup if this is a fresh start ─────
 if [ -f /data/commissioning_backup.tar.gz ] && \
-   [ ! -d /data/matterbridge/AlexaBridge ]; then
+   [ ! -d /data/.matterbridge/storage ]; then
     echo "Restoring commissioning backup..."
     /usr/bin/restore-commissioning.sh && \
         echo "Commissioning restored ✓" || \
@@ -77,7 +83,7 @@ if [ "${BACKUP_ENABLED}" = "true" ]; then
 fi
 
 # ── Start the status UI (background) ──────────────────────────
-echo "Starting status UI on port 8098..."
+echo "Starting status dashboard on port 8098..."
 python3 /usr/share/alexa-bridge-ui/server.py \
     --host "0.0.0.0" \
     --port 8098 \
@@ -88,20 +94,31 @@ python3 /usr/share/alexa-bridge-ui/server.py \
     --data-dir "/data" &
 
 UI_PID=$!
-echo "Status UI PID: ${UI_PID} ✓"
+echo "Status dashboard PID: ${UI_PID} ✓"
 
 # Give UI a moment to bind the port
 sleep 2
 
+# ── Register matterbridge-hass plugin in persistent storage ───
+echo "Ensuring matterbridge-hass is in persistent plugin directory..."
+cp -rf /app/node_modules/matterbridge-hass /data/Matterbridge/ 2>/dev/null || true
+mkdir -p /usr/local/lib/node_modules
+cp -rf /app/node_modules/matterbridge-hass /usr/local/lib/node_modules/ 2>/dev/null || true
+
+echo "Registering matterbridge-hass plugin..."
+node /app/node_modules/.bin/matterbridge -add /data/Matterbridge/matterbridge-hass 2>&1 || \
+node /app/node_modules/.bin/matterbridge -add matterbridge-hass 2>&1 || true
+
 # ── Start Matterbridge (foreground) ───────────────────────────
 echo ""
 echo "========================================"
-echo "  Starting Matterbridge..."
+echo "  Starting Matterbridge with Frontend..."
 echo "  Matter port : ${MATTER_PORT}"
-echo "  UI          : http://homeassistant:8098"
+echo "  Web UI      : port 8283"
 echo "========================================"
 
 exec node /app/node_modules/.bin/matterbridge \
     -bridge \
     -port "${MATTER_PORT}" \
-    -logger "${LOG_LEVEL}"
+    -logger "${LOG_LEVEL}" \
+    --frontend 8283
