@@ -1,5 +1,5 @@
 name: "Alexa Matter Bridge"
-version: "1.0.4"
+version: "1.0.5"
 slug: "alexa_matter_bridge"
 description: >
   Exposes Home Assistant entities to Alexa locally through Matter.
