@@ -31,5 +31,6 @@ RUN chmod +x /run.sh && \
 EXPOSE 5540/tcp
 EXPOSE 5540/udp
 EXPOSE 8098/tcp
+EXPOSE 8283/tcp
 
 CMD ["/run.sh"]
