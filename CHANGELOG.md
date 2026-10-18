@@ -17,6 +17,7 @@
 - The status UI was reachable by anyone on the LAN on port 8098 without login. It now answers ingress only.
 
 **Changes**
+- Status UI moved to port 8095 (8098 is used by AJ Netweb CCTV Studio on the host network).
 - Pinned stable releases: Matterbridge 3.10.14 + matterbridge-hass 1.5.0 (was a dev build), installed globally so
   there is a single copy of the Matterbridge core (removes the need for the platform brand-check patch).
 - Compatibility patch is applied at build time and fails the build if upstream code changes.
