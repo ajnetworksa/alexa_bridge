@@ -336,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--port", type=int, default=8098)
+    ap.add_argument("--port", type=int, default=8095)
     ap.add_argument("--label", default="alexa")
     args = ap.parse_args()
     STATE["label"] = args.label or "alexa"

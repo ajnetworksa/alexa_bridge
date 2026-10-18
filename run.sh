@@ -74,7 +74,7 @@ if [ "${BACKUP_ENABLED}" = "true" ]; then
 fi
 
 # ── Status UI (ingress only) ──────────────────────────────────────────────────
-python3 /usr/share/alexa-bridge-ui/server.py --port 8098 --label "${EXPOSE_LABEL}" &
+python3 /usr/share/alexa-bridge-ui/server.py --port 8095 --label "${EXPOSE_LABEL}" &
 
 # ── Matterbridge (foreground). -filelogger lets the UI show pairing codes. ────
 echo "[start] Matterbridge bridge mode, frontend on :8283"

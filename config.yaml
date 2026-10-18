@@ -23,7 +23,7 @@ hassio_role: default
 auth_api: false
 
 ingress: true
-ingress_port: 8098
+ingress_port: 8095
 ingress_stream: true
 webui: "http://[HOST]:[PORT:8283]"
 
