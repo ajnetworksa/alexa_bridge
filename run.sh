@@ -22,8 +22,14 @@ MATTER_PORT="$(opt '.matter_port // 5540' 5540)"
 LOG_LEVEL="$(opt '.log_level // "info"' info)"
 EXPOSE_LABEL="$(opt '.auto_expose_label // "alexa"' alexa)"
 BACKUP_ENABLED="$(opt '.backup_commissioning // true' true)"
-# "automation." -> "automation" (plugin expects domain names)
-BLACKLIST_JSON="$(jq -c '[(.excluded_entity_prefixes // [])[] | rtrimstr(".")]' "${OPTIONS}" 2>/dev/null || echo '[]')"
+# "automation." -> "automation" (plugin expects domain names). The untouched pre-1.2 default list also
+# blocked scripts, scenes and input helpers; only labelled entities are exposed anyway, and voice commands
+# (house modes, scenes, adhan) need them, so that exact list no longer blocks them (voice.py does the same).
+BLACKLIST_JSON="$(jq -c '
+  [(.excluded_entity_prefixes // [])[] | rtrimstr(".")] as $b
+  | if ($b | sort) == (["automation","scene","script","group","device_tracker","person","zone","timer",
+                        "input_boolean","input_number","input_select","input_text","input_datetime","counter"] | sort)
+    then $b - ["script","scene","input_boolean","input_button"] else $b end' "${OPTIONS}" 2>/dev/null || echo '[]')"
 
 if [ -z "${SUPERVISOR_TOKEN:-}" ]; then
     echo "[fatal] SUPERVISOR_TOKEN is missing - homeassistant_api must be enabled"

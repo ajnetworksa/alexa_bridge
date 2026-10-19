@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0
+**New**
+- **Voice commands** section on the add-on page: house modes, scenes, ACs, AC pre-cooling and the adhan
+  controls, each with the sentence to say ("Alexa, turn on Away mode", "Alexa, set Majlis AC to 22 degrees").
+  One switch per item, or **Expose all**.
+- The Prayer & Adhan helpers get short names Alexa can hear when they are exposed from there ("Adhan",
+  "Mute next adhan", "Play adhan", "Stop adhan", "AC pre-cooling"), unless someone already renamed them in HA.
+- Alarm arming scripts (`script.ajnetweb_alarm_arm_*`) appear as their own group when they exist. Disarming by
+  voice is never offered.
+
+**Fixes**
+- The default *excluded* list blocked scripts, scenes and input helpers, so house modes and scenes could never
+  reach Alexa even when labelled. They are no longer in the default. An installed add-on still on the old
+  default list is treated as the new one; a list the installer changed is kept as it is, and the page says when
+  it blocks voice commands.
+
 ## 1.1.0
 **Fixes**
 - The plugin config was written to `/data/matterbridge/AlexaBridge/`, which Matterbridge never reads, with

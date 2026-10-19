@@ -45,6 +45,8 @@
   .ent { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:8px 6px; border-radius:8px; }
   .ent:hover { background:var(--card2); }
   .ent .id { font-size:11px; color:var(--muted); word-break:break-all; }
+  .say { font-size:12px; color:var(--accent); }
+  .gdesc { font-size:12px; color:var(--muted); margin:-2px 0 4px; }
   .tag { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--card2); color:var(--muted); margin-inline-start:6px; }
   .tag.warn { color:var(--warn); }
   .switch { position:relative; width:42px; height:24px; flex:none; }
@@ -93,6 +95,17 @@
         <div class="muted small" id="pairNote"></div>
       </div>
     </div>
+  </div>
+
+  <div class="card" id="voiceCard" hidden>
+    <div class="row">
+      <div><h2>Voice commands</h2>
+        <div class="muted small">House modes, scenes, ACs and the adhan, with what to say. Turning one on exposes it
+          like any device below; long helper names get a short one Alexa can hear.</div></div>
+      <button class="btn small" id="btnVoiceAll">Expose all</button>
+    </div>
+    <div class="banner" id="voiceBlocked"></div>
+    <div id="voiceList"></div>
   </div>
 
   <div class="card">
@@ -191,6 +204,33 @@
     }));
   }
 
+  let voiceIds = [];
+  async function loadVoice() {
+    const r = await api("api/voice");
+    if (!r.ok) return;
+    const groups = r.groups || [];
+    $("voiceCard").hidden = !groups.length && !(r.blocked_domains || []).length;
+    const blocked = r.blocked_domains || [];
+    $("voiceBlocked").classList.toggle("show", !!blocked.length);
+    $("voiceBlocked").textContent = blocked.length ? `The add-on option "excluded_entity_prefixes" blocks ${blocked.join(", ")}, so ` +
+      "these can't reach Alexa. Remove them from the option (Configuration tab) and restart the add-on." : "";
+    voiceIds = groups.flatMap((g) => g.items.filter((i) => !i.exposed && !i.blocked).map((i) => i.entity_id));
+    $("btnVoiceAll").disabled = !voiceIds.length;
+    $("voiceList").innerHTML = groups.map((g) => `<div class="group">${esc(g.title)}</div><div class="gdesc">${esc(g.desc)}</div>` +
+      g.items.map((i) => `<div class="ent"><div><div>${esc(i.rename_to || i.name)}
+        ${i.rename_to ? `<span class="tag">now “${esc(i.name)}”</span>` : ""}</div>
+        <div class="say">“${esc(i.say)}”</div></div>
+        <label class="switch" title="Expose to Alexa"><input type="checkbox" data-voice="${esc(i.entity_id)}" ${i.exposed ? "checked" : ""}
+          ${i.blocked ? "disabled" : ""}><span></span></label></div>`).join("")).join("");
+    $("voiceList").querySelectorAll("input[data-voice]").forEach((cb) => cb.addEventListener("change", async () => {
+      cb.disabled = true;
+      const r2 = await api("api/voice/expose", { entity_ids: [cb.dataset.voice], exposed: cb.checked });
+      cb.disabled = false;
+      if (!r2.ok) { cb.checked = !cb.checked; alert(r2.error || "Failed"); return; }
+      loadVoice(); loadEntities(); loadStatus();
+    }));
+  }
+
   async function loadEntities() {
     const r = await api("api/entities");
     if (!r.ok) { $("list").innerHTML = `<div style="color:var(--bad)">Could not load devices: ${esc(r.error)}</div>`; return; }
@@ -207,6 +247,12 @@
     const r = await api("api/expose", { entity_ids: ids, exposed: true });
     if (!r.ok) alert(r.error); loadEntities(); loadStatus();
   });
+  $("btnVoiceAll").addEventListener("click", async () => {
+    if (!voiceIds.length) return;
+    if (!confirm(`Expose ${voiceIds.length} voice commands to Alexa?`)) return;
+    const r = await api("api/voice/expose", { entity_ids: voiceIds, exposed: true });
+    if (!r.ok) alert(r.error); loadVoice(); loadEntities(); loadStatus();
+  });
   $("btnRestart").addEventListener("click", async () => {
     $("btnRestart").disabled = true; $("btnRestart").textContent = "Restarting…";
     await api("api/restart", {});
@@ -222,7 +268,7 @@
     const r = await api("api/log"); pre.textContent = r.log || r.error || "(empty)"; pre.hidden = false; pre.scrollTop = pre.scrollHeight;
   });
 
-  loadStatus(); loadEntities(); setInterval(loadStatus, 10000);
+  loadStatus(); loadVoice(); loadEntities(); setInterval(loadStatus, 10000);
 })();
 </script>
 </body>

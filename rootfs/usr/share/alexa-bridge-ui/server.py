@@ -23,6 +23,8 @@ from socketserver import ThreadingMixIn
 
 import websocket
 
+import voice
+
 UI_DIR = Path(__file__).parent
 TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 MB_DIR = Path(os.environ.get("MB_DIR", "/data/.matterbridge"))
@@ -145,7 +147,16 @@ def list_entities():
     return out
 
 
-def set_exposed(entity_ids, exposed: bool):
+def voice_section():
+    states = {s["entity_id"]: s for s in supervisor("GET", "/core/api/states")}
+    with HA() as ha:
+        label_id = ensure_label(ha)
+        registry = ha.call("config/entity_registry/list")
+    return {"ok": True, "groups": voice.voice_items(states, registry, label_id, STATE["blacklist"]),
+            "blocked_domains": [d for d in voice.VOICE_DOMAINS if d in STATE["blacklist"]]}
+
+
+def set_exposed(entity_ids, exposed: bool, rename: bool = False):
     changed = 0
     with HA() as ha:
         label_id = ensure_label(ha)
@@ -156,8 +167,12 @@ def set_exposed(entity_ids, exposed: bool):
                 continue
             labels = set(reg.get("labels") or [])
             new = (labels | {label_id}) if exposed else (labels - {label_id})
-            if new != labels:
-                ha.call("config/entity_registry/update", entity_id=eid, labels=sorted(new))
+            update = {"labels": sorted(new)} if new != labels else {}
+            short = voice.rename_for(eid, reg) if rename and exposed else None
+            if short:
+                update["name"] = short   # a name Alexa can hear; only when nobody renamed it in HA yet
+            if update:
+                ha.call("config/entity_registry/update", entity_id=eid, **update)
                 changed += 1
     if changed:
         STATE["restart_needed"] = True
@@ -295,6 +310,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._run(status)
         if p == "/api/entities":
             return self._run(lambda: {"ok": True, "entities": list_entities()})
+        if p == "/api/voice":
+            return self._run(voice_section)
         if p == "/api/log":
             return self._run(lambda: {"ok": True, "log": "\n".join(read_log_tail(120_000).splitlines()[-300:])})
         self._json({"error": "Not found"}, 404)
@@ -311,6 +328,9 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/expose":
             ids = [i for i in body.get("entity_ids", []) if isinstance(i, str)]
             return self._run(lambda: {"ok": True, "changed": set_exposed(ids, bool(body.get("exposed", True)))})
+        if p == "/api/voice/expose":
+            ids = [i for i in body.get("entity_ids", []) if isinstance(i, str)][:200]
+            return self._run(lambda: {"ok": True, "changed": set_exposed(ids, bool(body.get("exposed", True)), rename=True)})
         if p == "/api/restart":
             def restart():
                 with _lock:
@@ -342,7 +362,7 @@ def main():
     STATE["label"] = args.label or "alexa"
     try:
         opts = json.loads(Path("/data/options.json").read_text())
-        STATE["blacklist"] = [p.rstrip(".") for p in opts.get("excluded_entity_prefixes", [])]
+        STATE["blacklist"] = voice.effective_blacklist(opts.get("excluded_entity_prefixes", []))
     except (OSError, ValueError):
         pass
     def prepare_label():
