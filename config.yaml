@@ -1,9 +1,9 @@
 name: "Alexa Matter Bridge"
-version: "1.0.6"
+version: "1.1.0"
 slug: "alexa_matter_bridge"
 description: >
-  Exposes Home Assistant entities to Alexa locally through Matter.
-  Powered by Matterbridge.
+  Local Alexa control for Home Assistant through Matter. Pick devices with a
+  switch, scan the QR code in the Alexa app, done. Powered by Matterbridge.
 
 url: "https://github.com/ajnetworksa/alexa_bridge"
 
@@ -23,7 +23,7 @@ hassio_role: default
 auth_api: false
 
 ingress: true
-ingress_port: 8098
+ingress_port: 8095
 ingress_stream: true
 webui: "http://[HOST]:[PORT:8283]"
 
@@ -33,19 +33,15 @@ panel_title: "Alexa Bridge"
 ports:
   5540/tcp: 5540
   5540/udp: 5540
-  8098/tcp: 8098
   8283/tcp: 8283
 
 ports_description:
   5540/tcp: "Matter bridge TCP"
   5540/udp: "Matter bridge UDP"
-  8098/tcp: "Alexa Matter Bridge Dashboard"
   8283/tcp: "Matterbridge Web UI"
 
 map:
-  - addon_config:rw
   - share:rw
-  - data:rw
 
 options:
   matter_port: 5540

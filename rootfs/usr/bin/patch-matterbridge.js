@@ -1,66 +1,45 @@
+#!/usr/bin/env node
+/**
+ * Build-time compatibility patch for matterbridge-hass.
+ *
+ * Inside a Home Assistant add-on the documented way to reach Core is the
+ * Supervisor proxy: ws://supervisor/core/websocket with SUPERVISOR_TOKEN.
+ * The plugin always appends "/api/websocket" to the host, so we teach it that
+ * a host ending in "/core" means the Supervisor proxy.
+ *
+ * Run with --strict (Dockerfile) to fail the build when upstream code changes.
+ */
 const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
-console.log('[patch] Running Matterbridge compatibility patches...');
+const strict = process.argv.includes('--strict');
+const globalRoot = execSync('npm root -g').toString().trim();
+const file = path.join(globalRoot, 'matterbridge-hass', 'dist', 'homeAssistant.js');
 
-// 1. Patch @matterbridge/core platform type/brand check
-const corePlatformFiles = [
-  '/app/node_modules/@matterbridge/core/dist/matterbridgePlatform.js',
-  '/app/node_modules/@matterbridge/core/dist/matterbridgeDynamicPlatform.js',
-  '/data/Matterbridge/node_modules/@matterbridge/core/dist/matterbridgePlatform.js',
-  '/data/Matterbridge/node_modules/@matterbridge/core/dist/matterbridgeDynamicPlatform.js'
-];
+const MARKER = '/* ajn-supervisor-ws */';
+const NEEDLE = "this.wsUrl + '/api/websocket'";
+const REPLACEMENT = `${MARKER}(this.wsUrl.endsWith('/core') ? this.wsUrl + '/websocket' : this.wsUrl + '/api/websocket')`;
 
-for (const file of corePlatformFiles) {
-  if (fs.existsSync(file)) {
-    let content = fs.readFileSync(file, 'utf8');
-    content = content.replace(
-      /export function isMatterbridgePlatform\(value\) \{[\s\S]*?\n\}/,
-      'export function isMatterbridgePlatform(value) {\n    return Boolean(value && typeof value === "object");\n}'
-    );
-    content = content.replace(
-      /export function isMatterbridgeDynamicPlatform\(value\) \{[\s\S]*?\n\}/,
-      'export function isMatterbridgeDynamicPlatform(value) {\n    return Boolean(value && typeof value === "object");\n}'
-    );
-    fs.writeFileSync(file, content);
-    console.log('[patch] Patched platform check in', file);
-  }
+function fail(msg) {
+  console.error(`[patch] ${msg}`);
+  if (strict) process.exit(1);
 }
 
-// 2. Patch homeAssistant.js to automatically sanitize host URLs (stripping trailing slashes and handling http:// vs ws://)
-const haFiles = [
-  '/app/node_modules/matterbridge-hass/dist/homeAssistant.js',
-  '/data/Matterbridge/matterbridge-hass/dist/homeAssistant.js',
-  '/usr/local/lib/node_modules/matterbridge-hass/dist/homeAssistant.js'
-];
-
-for (const file of haFiles) {
-  if (fs.existsSync(file)) {
-    let content = fs.readFileSync(file, 'utf8');
-    content = content.replace(
-      'this.wsUrl = url;',
-      'this.wsUrl = (url || "").trim().replace(/^http:\\/\\//, "ws://").replace(/^https:\\/\\//, "wss://").replace(/\\/+$/, "").replace(/\\/api\\/websocket\\/?$/, "");'
-    );
-    fs.writeFileSync(file, content);
-    console.log('[patch] Patched WebSocket URL sanitizer in', file);
-  }
-}
-
-// 3. Sanitize existing /data/.matterbridge/matterbridge-hass.json if present
-const configJson = '/data/.matterbridge/matterbridge-hass.json';
-if (fs.existsSync(configJson)) {
-  try {
-    let config = JSON.parse(fs.readFileSync(configJson, 'utf8'));
-    if (config.host && typeof config.host === 'string') {
-      const sanitized = config.host.trim().replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://').replace(/\/+$/, '').replace(/\/api\/websocket\/?$/, '');
-      if (sanitized !== config.host) {
-        config.host = sanitized;
-        fs.writeFileSync(configJson, JSON.stringify(config, null, 2));
-        console.log('[patch] Sanitized host in', configJson, '->', sanitized);
-      }
+if (!fs.existsSync(file)) {
+  fail(`not found: ${file}`);
+} else {
+  let src = fs.readFileSync(file, 'utf8');
+  if (src.includes(MARKER)) {
+    console.log('[patch] already applied');
+  } else {
+    const count = src.split(NEEDLE).length - 1;
+    if (count === 0) {
+      fail(`pattern "${NEEDLE}" not found in ${file} - upstream changed, review the patch`);
+    } else {
+      src = src.split(NEEDLE).join(REPLACEMENT);
+      fs.writeFileSync(file, src);
+      console.log(`[patch] supervisor websocket support added (${count} place(s))`);
     }
-  } catch (err) {
-    console.error('[patch] Error reading/writing', configJson, err.message);
   }
 }
-
-console.log('[patch] Compatibility patches applied successfully ✓');
